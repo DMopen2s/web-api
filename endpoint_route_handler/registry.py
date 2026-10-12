@@ -12,7 +12,7 @@ from psycopg2.extensions import AsIs
 from psycopg2.extras import execute_values
 
 from odoo import tools
-from odoo.tools import DotDict
+from odoo.tools import DotDict, SQL
 
 from odoo.addons.base.models.ir_model import query_insert
 
@@ -68,18 +68,17 @@ class EndpointRegistry:
     * track registered endpoints
     * retrieve routing rules to load in ir.http routing map
     """
-
     __slots__ = "cr"
     _table = "endpoint_route"
     _columns = (
         # name, type, comment
-        ("key", "VARCHAR", ""),
-        ("route", "VARCHAR", ""),
-        ("opts", "text", ""),
-        ("routing", "text", ""),
-        ("endpoint_hash", "VARCHAR(32)", ""),
-        ("route_group", "VARCHAR(32)", ""),
-        ("updated_at", "TIMESTAMP NOT NULL DEFAULT NOW()", ""),
+        ("key", SQL("VARCHAR"), ""),
+        ("route", SQL("VARCHAR"), ""),
+        ("opts", SQL("text"), ""),
+        ("routing", SQL("text"), ""),
+        ("endpoint_hash", SQL("VARCHAR(32)"), ""),
+        ("route_group", SQL("VARCHAR(32)"), ""),
+        ("updated_at", SQL("TIMESTAMP NOT NULL DEFAULT NOW()"), ""),
     )
 
     @classmethod

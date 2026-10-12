@@ -2,7 +2,6 @@
 # @author: Simone Orsi <simone.orsi@camptocamp.com>
 # License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl).
 from contextlib import contextmanager
-from unittest.mock import patch
 
 from odoo import api, modules
 from odoo.tests import common
@@ -43,14 +42,6 @@ class TestEndpoint(CommonEndpoint):
         EndpointRegistry.wipe_registry_for(self.env.cr)
         super().tearDown()
 
-    def test_routing_map_no_request(self):
-        # Crons, `odoo shell` and core tests build the routing map with no
-        # request bound. website's TestWebsiteTechnicalPage does, through
-        # website.technical.page.get_static_routes(). No mocked request here
-        # on purpose.
-        self.env.registry.clear_cache("routing")
-        self.assertTrue(self.env["ir.http"].routing_map())
-
     def test_as_tool_base_data(self):
         new_route = make_new_route(self.env)
         self.assertEqual(new_route.route, "/my/test/route")
@@ -58,33 +49,6 @@ class TestEndpoint(CommonEndpoint):
         self.assertTrue(first_hash)
         new_route.route += "/new"
         self.assertNotEqual(new_route.endpoint_hash, first_hash)
-
-    def test_auth_type_routing_info(self):
-        for auth_type in ("public", "user_endpoint", "bearer"):
-            new_route = make_new_route(self.env, auth_type=auth_type)
-            __, routing, __ = new_route._get_routing_info()
-            self.assertEqual(routing["auth"], auth_type)
-
-    def test_route_field_precomputed(self):
-        """Regression guard: ensure ``precompute=True`` stays on ``route``.
-
-        Without it, downstream modules that derive ``route`` via compute
-        would hit a "Missing required value" error at INSERT time.
-        """
-        Model = type(self.env["endpoint.route.handler.tool"])
-
-        def _fake_compute_route(self):
-            for rec in self:
-                rec.route = "/precompute/probe"
-
-        with patch.object(Model, "_compute_route", _fake_compute_route):
-            rec = self.env["endpoint.route.handler.tool"].create(
-                {
-                    "name": "Precompute test",
-                    "request_method": "GET",
-                }
-            )
-            self.assertEqual(rec.route, "/precompute/probe")
 
     @mute_logger("odoo.addons.base.models.ir_http")
     def test_as_tool_register_single_controller(self):

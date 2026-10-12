@@ -57,6 +57,13 @@ class EndpointRouteSyncMixin(models.AbstractModel):
             partial(self._handle_registry_sync_post_commit, record_ids),
         )
 
+    def _clear_routing_cache(self):
+        if hasattr(self.env, "transaction") and hasattr(self.env.transaction, "invalidate_ormcache"):
+            self.env.transaction.invalidate_ormcache("routing")
+        if hasattr(self.env.registry, "registry_caches__") and "routing" in self.env.registry.registry_caches__:
+            with self.env.registry.registry_cache_lock:
+                self.env.registry.registry_caches__["routing"][1].clear()
+
     def _handle_registry_sync(self, record_ids=None):
         """Register and un-register controllers for given records."""
         record_ids = record_ids or self.ids
@@ -67,7 +74,7 @@ class EndpointRouteSyncMixin(models.AbstractModel):
         records.filtered(lambda x: not x.active)._unregister_controllers(
             clear_cache=False
         )
-        self.env.registry.clear_cache("routing")
+        self._clear_routing_cache()
 
     def _handle_registry_sync_post_commit(self, record_ids=None):
         """Handle registry sync after commit.
@@ -94,7 +101,7 @@ class EndpointRouteSyncMixin(models.AbstractModel):
         rules = self._prepare_endpoint_rules(options=options)
         self._endpoint_registry.update_rules(rules, init=init)
         if clear_cache:
-            self.env.registry.clear_cache("routing")
+            self._clear_routing_cache()
         _logger.debug(
             "%s registered controllers: %s",
             self._name,
@@ -106,7 +113,7 @@ class EndpointRouteSyncMixin(models.AbstractModel):
             return
         self._endpoint_registry.drop_rules(self._registered_endpoint_rule_keys())
         if clear_cache:
-            self.env.registry.clear_cache("routing")
+            self._clear_routing_cache()
         _logger.debug(
             "%s unregistered controllers: %s",
             self._name,
